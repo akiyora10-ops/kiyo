@@ -21,7 +21,7 @@ export default definePlugin({
         replace: (input as any).replace,
       });
       if (!r.ok) throw new Error(r.error);
-      return edited;
+      return `edited ${full}`;
     },
   },
 });

@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "@kiyo/plugin-sdk": ["./packages/plugin-sdk/src/index.ts"],
+      "@kiyo/core": ["./packages/core/src/index.ts"],
+      "@kiyo/router": ["./packages/router/src/index.ts"]
+    }
+  },
+  "include": ["plugins/**/*.ts"]
+}

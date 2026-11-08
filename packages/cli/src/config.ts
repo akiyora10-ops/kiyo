@@ -18,8 +18,8 @@ const DEFAULT: KiyoConfig = {
 };
 
 export async function loadConfig(cwd: string): Promise<KiyoConfig> {
-  const globalPath = path.join(os.homedir(), ".Kiyo", "config.json");
-  const projectPath = path.join(cwd, ".Kiyo", "config.json");
+  const globalPath = path.join(os.homedir(), ".kiyo", "config.json");
+  const projectPath = path.join(cwd, ".kiyo", "config.json");
   let cfg = { ...DEFAULT };
   for (const p of [globalPath, projectPath]) {
     try {
@@ -32,7 +32,7 @@ export async function loadConfig(cwd: string): Promise<KiyoConfig> {
 }
 
 export async function saveConfig(cwd: string, cfg: KiyoConfig, global = false): Promise<void> {
-  const dir = global ? path.join(os.homedir(), ".Kiyo") : path.join(cwd, ".Kiyo");
+  const dir = global ? path.join(os.homedir(), ".kiyo") : path.join(cwd, ".kiyo");
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, "config.json"), JSON.stringify(cfg, null, 2), "utf8");
 }

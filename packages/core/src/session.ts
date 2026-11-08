@@ -18,7 +18,7 @@ export interface Session {
 }
 
 function sessionsDir(): string {
-  return path.join(os.homedir(), ".Kiyo", "sessions");
+  return path.join(os.homedir(), ".kiyo", "sessions");
 }
 
 export async function ensureSessionsDir(): Promise<void> {

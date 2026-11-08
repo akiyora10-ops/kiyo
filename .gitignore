@@ -2,7 +2,7 @@ node_modules/
 dist/
 coverage/
 .astro/
-.Kiyo/
+.kiyo/
 *.log
 .env
 .DS_Store

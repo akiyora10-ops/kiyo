@@ -1,9 +1,18 @@
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { createJiti } from "jiti";
 
-const jiti = createJiti(import.meta.url);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(__dirname, "..", "..", "..");
+const jiti = createJiti(import.meta.url, {
+  alias: {
+    "@kiyo/plugin-sdk": path.join(repoRoot, "packages", "plugin-sdk", "src", "index.ts"),
+    "@kiyo/core": path.join(repoRoot, "packages", "core", "src", "index.ts"),
+    "@kiyo/router": path.join(repoRoot, "packages", "router", "src", "index.ts"),
+  },
+});
 
 export async function loadPlugins(dirs: string[]): Promise<any[]> {
   const out: any[] = [];

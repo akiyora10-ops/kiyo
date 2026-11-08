@@ -11,7 +11,8 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm -r typecheck && pnpm check:plugins",
+    "check:plugins": "tsc -p tsconfig.plugins.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "changeset": "changeset",
@@ -22,14 +23,15 @@
   },
   "packageManager": "pnpm@12.18.0",
   "dependencies": {
-    "@types/react": "^19.3.0",
     "execa": "^10.2.1",
-    "ink": "^8.0.0",
-    "react": "^19.3.1",
     "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "ink": "^8.0.0",
+    "react": "^19.3.1",
+    "typescript": "^5.9.0",
     "vitest": "^5.1.0"
   }
 }

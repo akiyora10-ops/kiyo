@@ -19,7 +19,7 @@ export default definePlugin({
       const full = p.startsWith("/") || /^[A-Za-z]:/.test(p) ? p : `${ctx.projectRoot}/${p}`;
       await fs.mkdir(path.dirname(full), { recursive: true });
       await fs.writeFile(full, (input as any).content, "utf8");
-      return wrote;
+      return `wrote ${full}`;
     },
   },
 });

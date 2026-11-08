@@ -12,6 +12,7 @@ export default definePlugin({
     displayName: "Ollama",
     baseUrl: "http://localhost:11434/v1",
     envVar: "OLLAMA_HOST",
+    auth: "none",
     models: [{ id: "llama3.2", name: "Llama 3.2", ctx: 131072, tools: true }],
     rateLimits: {},
   }),

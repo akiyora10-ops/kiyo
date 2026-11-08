@@ -3,10 +3,17 @@
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!**/dist", "!**/node_modules", "!**/.astro", "!**/coverage"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/node_modules",
+      "!**/.astro",
+      "!**/coverage",
+      "!docs/landing"
+    ]
   },
   "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
-  "linter": { "enabled": true, "rules": {} },
+  "linter": { "enabled": true, "rules": { "suspicious": { "noExplicitAny": "off" } } },
   "javascript": {
     "formatter": { "quoteStyle": "double", "semicolons": "always", "trailingCommas": "all" }
   }

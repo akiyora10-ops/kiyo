@@ -5,6 +5,7 @@ export interface OAICompatConfig {
   displayName: string;
   baseUrl: string;
   envVar: string;
+  auth?: "api-key" | "none";
   models: {
     id: string;
     name: string;
@@ -17,6 +18,7 @@ export interface OAICompatConfig {
 }
 
 export function makeOpenAICompatProvider(cfg: OAICompatConfig, apiKey?: string): Provider {
+  const auth = cfg.auth ?? "api-key";
   const models = cfg.models.map((m) => ({
     id: m.id,
     displayName: m.name,
@@ -29,8 +31,14 @@ export function makeOpenAICompatProvider(cfg: OAICompatConfig, apiKey?: string):
     },
   }));
 
+  function headers(key?: string): Record<string, string> {
+    const h: Record<string, string> = { "Content-Type": "application/json" };
+    const k = key || apiKey || process.env[cfg.envVar];
+    if (auth === "api-key" && k) h.Authorization = `Bearer ${k}`;
+    return h;
+  }
+
   async function* chat(req: ProviderRequest, key?: string): AsyncIterable<ProviderChunk> {
-    const _k = key || apiKey || process.env[cfg.envVar];
     const body = {
       model: req.model,
       messages: req.messages,
@@ -44,7 +52,7 @@ export function makeOpenAICompatProvider(cfg: OAICompatConfig, apiKey?: string):
     };
     const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: Bearer },
+      headers: headers(key),
       body: JSON.stringify(body),
     });
     if (!res.ok) {
@@ -53,8 +61,13 @@ export function makeOpenAICompatProvider(cfg: OAICompatConfig, apiKey?: string):
       return;
     }
     const reader = res.body?.getReader();
+    if (!reader) {
+      yield { type: "error", error: "no response body" };
+      return;
+    }
     const decoder = new TextDecoder();
     let buf = "";
+    const toolCalls: Record<number, { id: string; name: string; args: string }> = {};
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -63,38 +76,45 @@ export function makeOpenAICompatProvider(cfg: OAICompatConfig, apiKey?: string):
       buf = lines.pop() || "";
       for (const line of lines) {
         const trimmed = line.trim();
-        if (!trimmed?.startsWith("data:")) continue;
+        if (!trimmed.startsWith("data:")) continue;
         const data = trimmed.slice(5).trim();
-        if (data === "[DONE]") {
-          yield { type: "done" };
-          continue;
-        }
+        if (data === "[DONE]") continue;
         try {
           const json = JSON.parse(data);
           const delta = json.choices?.[0]?.delta;
           if (delta?.content) yield { type: "text", text: delta.content };
-          if (delta?.tool_calls) {
+          if (Array.isArray(delta?.tool_calls)) {
             for (const tc of delta.tool_calls) {
-              if (tc.function?.name) {
-                let args: unknown = {};
-                try {
-                  args = JSON.parse(tc.function.arguments || "{}");
-                } catch {}
-                yield {
-                  type: "tool_call",
-                  toolCall: { id: tc.id || c_, name: tc.function.name, arguments: args },
-                };
-              }
+              const idx = typeof tc.index === "number" ? tc.index : 0;
+              if (!toolCalls[idx]) toolCalls[idx] = { id: tc.id || "", name: "", args: "" };
+              if (tc.id) toolCalls[idx].id = tc.id;
+              if (tc.function?.name) toolCalls[idx].name += tc.function.name;
+              if (tc.function?.arguments) toolCalls[idx].args += tc.function.arguments;
             }
           }
           const usage = json.usage;
-          if (usage)
+          if (usage) {
             yield {
               type: "done",
               usage: { inputTokens: usage.prompt_tokens, outputTokens: usage.completion_tokens },
             };
-        } catch {}
+          }
+        } catch {
+          // ignore malformed chunk
+        }
       }
+    }
+    for (const tc of Object.values(toolCalls)) {
+      let args: unknown = {};
+      try {
+        args = JSON.parse(tc.args || "{}");
+      } catch {
+        args = {};
+      }
+      yield {
+        type: "tool_call",
+        toolCall: { id: tc.id || `tc_${Date.now()}`, name: tc.name, arguments: args },
+      };
     }
     yield { type: "done" };
   }
@@ -103,16 +123,15 @@ export function makeOpenAICompatProvider(cfg: OAICompatConfig, apiKey?: string):
     id: cfg.id,
     displayName: cfg.displayName,
     baseUrl: cfg.baseUrl,
-    authMethod: "api-key",
+    authMethod: auth,
     envVar: cfg.envVar,
     models,
     rateLimits: cfg.rateLimits || {},
     healthCheck: async () => {
-      const k = process.env[cfg.envVar];
-      if (!k) return false;
+      if (auth === "api-key" && !process.env[cfg.envVar] && !apiKey) return false;
       try {
-        const r = await fetch(`${cfg.baseUrl}/models`, { headers: { Authorization: Bearer } });
-        return r.ok;
+        const res = await fetch(`${cfg.baseUrl}/models`, { headers: headers(apiKey) });
+        return res.ok;
       } catch {
         return false;
       }

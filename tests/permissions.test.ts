@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { isCatastrophic, decidePermission } from "../packages/core/src/permissions.js";
+import { describe, expect, it } from "vitest";
+import { decidePermission, isCatastrophic } from "../packages/core/src/permissions.js";
 
 describe("permissions", () => {
   it("blocks catastrophic", () => {

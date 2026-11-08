@@ -1,12 +1,28 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import readline from "node:readline";
+import { fileURLToPath } from "node:url";
 import { createToolRegistry, runAgent } from "@kiyo/core";
 import type { Provider } from "@kiyo/plugin-sdk";
 import { createRouter } from "@kiyo/router";
 import { loadConfig } from "./config.js";
 import { loadPlugins, pluginDirs } from "./plugins.js";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const VERSION = JSON.parse(readFileSync(path.join(__dirname, "..", "package.json"), "utf8"))
+  .version as string;
+
 async function main() {
   const args = process.argv.slice(2);
+  if (args[0] === "--version" || args[0] === "-v") {
+    console.log(VERSION);
+    return;
+  }
+  if (args[0] === "--help" || args[0] === "-h") {
+    console.log(`kiyo ${VERSION}`);
+    console.log("Usage: kiyo [--version] [--help] [doctor|plugin ...|run <task>]");
+    return;
+  }
   const cwd = process.cwd();
   const cfg = await loadConfig(cwd);
 
