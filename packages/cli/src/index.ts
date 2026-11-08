@@ -1,3 +1,4 @@
+import os from "node:os";
 import { promises as fs, readFileSync } from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
@@ -5,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { createToolRegistry, runAgent } from "@kiyo/core";
 import type { Provider } from "@kiyo/plugin-sdk";
 import { createRouter } from "@kiyo/router";
-import { loadConfig } from "./config.js";
+import { loadConfig, saveConfig } from "./config.js";
 import { loadPlugins, pluginDirs } from "./plugins.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -44,16 +45,35 @@ async function main() {
   const cwd = process.cwd();
   const cfg = await loadConfig(cwd);
 
+  if (args[0] === "onboard") {
+    console.log("Kiyo onboarding");
+    console.log("Free providers: openrouter, google, groq, (generic openai-compatible)");
+    console.log("Set env vars: OPENROUTER_API_KEY, GOOGLE_API_KEY, GROQ_API_KEY");
+    console.log("Or create ~/.kiyo/config.json with routingMode and model.");
+    await saveConfig(cwd, cfg, true);
+    console.log("saved config to ~/.kiyo/config.json");
+    return;
+  }
+
   if (args[0] === "doctor") {
     console.log("kiyo doctor");
     console.log("node:", process.version);
+    console.log("config:", path.join(os.homedir(), ".kiyo", "config.json"));
     console.log("mode:", cfg.mode);
+    console.log("routing:", cfg.routingMode);
     const plugins = await loadPlugins(pluginDirs(cwd));
     console.log("plugins loaded:", plugins.length);
     const providers = plugins.filter((p) => p.kind === "provider");
     for (const p of providers) {
-      const ok = await p.provider.healthCheck();
-      console.log(" provider", p.name, ok ? "OK" : "FAIL");
+      const hasKey = p.provider.authMethod === "none" || !!process.env[p.provider.envVar];
+      const ok = hasKey ? await p.provider.healthCheck() : false;
+      console.log(" provider", p.name, ok ? "OK" : hasKey ? "FAIL" : "NO KEY", `(${p.provider.envVar || "no key"})`);
+    }
+    try {
+      const { stdout } = await (await import("execa")).execa("git", ["rev-parse", "--is-inside-work-tree"], { cwd });
+      console.log("git:", stdout.trim());
+    } catch {
+      console.log("git: not a repo");
     }
     return;
   }
@@ -142,7 +162,36 @@ async function main() {
       return;
     }
     if (input.startsWith("/")) {
-      console.log("command:", input);
+      const [cmd, ...rest] = input.slice(1).split(/\s+/);
+      const arg = rest.join(" ");
+      switch (cmd) {
+        case "exit":
+        case "quit":
+          rl.close();
+          return;
+        case "help":
+          console.log("commands: /help /model /mode /usage /plugins /doctor /clear /exit");
+          break;
+        case "plugins":
+          console.log("plugins:", plugins.length);
+          break;
+        case "usage":
+          console.log(router.usageReport());
+          break;
+        case "mode":
+          if (arg) cfg.mode = arg as any;
+          console.log("mode:", cfg.mode);
+          break;
+        case "model":
+          if (arg) cfg.model = arg;
+          console.log("model:", cfg.model || "(auto)");
+          break;
+        case "clear":
+          console.clear();
+          break;
+        default:
+          console.log("unknown command:", cmd);
+      }
       rl.prompt();
       return;
     }
