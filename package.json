@@ -1,0 +1,35 @@
+{
+  "name": "kiyo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The AI coding agent that runs on free models. Fast, hackable, yours.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm -r dev",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "changeset": "changeset",
+    "release": "changeset version && pnpm build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@12.18.0",
+  "dependencies": {
+    "@types/react": "^19.3.0",
+    "execa": "^10.2.1",
+    "ink": "^8.0.0",
+    "react": "^19.3.1",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "vitest": "^5.1.0"
+  }
+}

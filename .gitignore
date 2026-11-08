@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+.astro/
+.Kiyo/
+*.log
+.env
+.DS_Store
