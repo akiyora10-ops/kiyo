@@ -1,5 +1,5 @@
-import os from "node:os";
 import { promises as fs, readFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
@@ -67,10 +67,19 @@ async function main() {
     for (const p of providers) {
       const hasKey = p.provider.authMethod === "none" || !!process.env[p.provider.envVar];
       const ok = hasKey ? await p.provider.healthCheck() : false;
-      console.log(" provider", p.name, ok ? "OK" : hasKey ? "FAIL" : "NO KEY", `(${p.provider.envVar || "no key"})`);
+      console.log(
+        " provider",
+        p.name,
+        ok ? "OK" : hasKey ? "FAIL" : "NO KEY",
+        `(${p.provider.envVar || "no key"})`,
+      );
     }
     try {
-      const { stdout } = await (await import("execa")).execa("git", ["rev-parse", "--is-inside-work-tree"], { cwd });
+      const { stdout } = await (await import("execa")).execa(
+        "git",
+        ["rev-parse", "--is-inside-work-tree"],
+        { cwd },
+      );
       console.log("git:", stdout.trim());
     } catch {
       console.log("git: not a repo");

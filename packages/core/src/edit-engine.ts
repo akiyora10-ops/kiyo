@@ -119,7 +119,9 @@ export async function restoreCheckpoint(id: string): Promise<boolean> {
   let cp = checkpoints.find((c) => c.id === id);
   if (!cp) {
     try {
-      cp = JSON.parse(await fs.readFile(path.join(checkpointsDir(), `${id}.json`), "utf8")) as Checkpoint;
+      cp = JSON.parse(
+        await fs.readFile(path.join(checkpointsDir(), `${id}.json`), "utf8"),
+      ) as Checkpoint;
     } catch {
       return false;
     }

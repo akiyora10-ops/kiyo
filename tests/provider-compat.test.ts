@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { makeOpenAICompatProvider } from "../plugins/providers/_openai-compat.js";
 
 describe("openai-compat", () => {
@@ -7,7 +7,11 @@ describe("openai-compat", () => {
     const stream = new ReadableStream({
       start(controller) {
         controller.enqueue(enc.encode('data: {"choices":[{"delta":{"content":"hi"}}]}\n\n'));
-        controller.enqueue(enc.encode('data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"t1","function":{"name":"read","arguments":"{\\"path\\":\\"a\\"}"}}]}}]}\n\n'));
+        controller.enqueue(
+          enc.encode(
+            'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"t1","function":{"name":"read","arguments":"{\\"path\\":\\"a\\"}"}}]}}]}\n\n',
+          ),
+        );
         controller.enqueue(enc.encode("data: [DONE]\n\n"));
         controller.close();
       },

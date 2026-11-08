@@ -41,7 +41,10 @@ export class ProviderRouter {
     return true;
   }
 
-  private pickModel(p: Provider, required: { tools?: boolean; vision?: boolean; longContext?: boolean }): string {
+  private pickModel(
+    p: Provider,
+    required: { tools?: boolean; vision?: boolean; longContext?: boolean },
+  ): string {
     const models = p.models.filter((m) => {
       if (required.tools && !m.capabilities.tools) return false;
       if (required.vision && !m.capabilities.vision) return false;
@@ -120,7 +123,11 @@ export class ProviderRouter {
       const t = Date.parse(ra);
       if (!Number.isNaN(t)) return Math.max(0, t - Date.now());
     }
-    for (const name of ["x-ratelimit-reset", "x-ratelimit-reset-requests", "x-ratelimit-reset-tokens"]) {
+    for (const name of [
+      "x-ratelimit-reset",
+      "x-ratelimit-reset-requests",
+      "x-ratelimit-reset-tokens",
+    ]) {
       const v = this.header(headers, name);
       if (!v) continue;
       const n = Number(v);

@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { createRouter } from "../packages/router/src/index.js";
 import type { Provider } from "@kiyo/plugin-sdk";
+import { describe, expect, it } from "vitest";
+import { createRouter } from "../packages/router/src/index.js";
 
 function mkProvider(id: string, impl: (req: any) => AsyncIterable<any>): Provider {
   return {
@@ -9,7 +9,14 @@ function mkProvider(id: string, impl: (req: any) => AsyncIterable<any>): Provide
     baseUrl: "http://localhost",
     authMethod: "none",
     envVar: "",
-    models: [{ id: "m", displayName: "m", contextWindow: 1000, capabilities: { tools: true, vision: false, longContext: false, streaming: true } }],
+    models: [
+      {
+        id: "m",
+        displayName: "m",
+        contextWindow: 1000,
+        capabilities: { tools: true, vision: false, longContext: false, streaming: true },
+      },
+    ],
     rateLimits: {},
     healthCheck: async () => true,
     chat: (req) => impl(req),
@@ -30,7 +37,10 @@ describe("router fallback", () => {
     for await (const c of r.chatWithFallback({ model: "", messages: [], stream: true })) {
       chunks.push(c);
     }
-    const text = chunks.filter((c) => c.type === "text").map((c) => c.text).join("");
+    const text = chunks
+      .filter((c) => c.type === "text")
+      .map((c) => c.text)
+      .join("");
     expect(text).toBe("done");
     expect(chunks.some((c) => c.type === "provider_switch")).toBe(true);
   });

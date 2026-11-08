@@ -57,7 +57,11 @@ export async function* runAgent(task: string, cfg: AgentConfig): AsyncGenerator<
         } else if (chunk.type === "tool_call" && chunk.toolCall) {
           toolCalls.push(chunk.toolCall);
         } else if (chunk.type === "provider_switch") {
-          yield { type: "provider_switch", provider: chunk.provider ?? "", model: chunk.model ?? "" };
+          yield {
+            type: "provider_switch",
+            provider: chunk.provider ?? "",
+            model: chunk.model ?? "",
+          };
         } else if (chunk.type === "error") {
           yield { type: "error", message: chunk.error ?? "provider error" };
           return;

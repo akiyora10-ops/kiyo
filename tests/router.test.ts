@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { createRouter } from "../packages/router/src/index.js";
 import type { Provider } from "@kiyo/plugin-sdk";
+import { describe, expect, it } from "vitest";
+import { createRouter } from "../packages/router/src/index.js";
 
 function mkProvider(id: string, chat: Provider["chat"]): Provider {
   return {
@@ -9,7 +9,14 @@ function mkProvider(id: string, chat: Provider["chat"]): Provider {
     baseUrl: "http://localhost",
     authMethod: "none",
     envVar: "",
-    models: [{ id: "m", displayName: "m", contextWindow: 1000, capabilities: { tools: true, vision: false, longContext: false, streaming: true } }],
+    models: [
+      {
+        id: "m",
+        displayName: "m",
+        contextWindow: 1000,
+        capabilities: { tools: true, vision: false, longContext: false, streaming: true },
+      },
+    ],
     rateLimits: {},
     healthCheck: async () => true,
     chat,
@@ -18,14 +25,20 @@ function mkProvider(id: string, chat: Provider["chat"]): Provider {
 
 describe("router", () => {
   it("selects first available with model", () => {
-    const r = createRouter({ providers: [mkProvider("a", async function* () {}), mkProvider("b", async function* () {})], mode: "free-first" });
+    const r = createRouter({
+      providers: [mkProvider("a", async function* () {}), mkProvider("b", async function* () {})],
+      mode: "free-first",
+    });
     const sel = r.select({ tools: true });
     expect(sel?.provider.id).toBe("a");
     expect(sel?.model).toBe("m");
   });
 
   it("skips cooled-down provider", () => {
-    const r = createRouter({ providers: [mkProvider("a", async function* () {}), mkProvider("b", async function* () {})], mode: "free-first" });
+    const r = createRouter({
+      providers: [mkProvider("a", async function* () {}), mkProvider("b", async function* () {})],
+      mode: "free-first",
+    });
     r.markRateLimited("a", 60_000);
     expect(r.select({ tools: true })?.provider.id).toBe("b");
   });
