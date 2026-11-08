@@ -1,4 +1,6 @@
 import { promises as fs } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 export interface EditOp {
   search: string;
@@ -12,6 +14,14 @@ export interface Checkpoint {
 }
 
 const checkpoints: Checkpoint[] = [];
+
+function checkpointsDir(): string {
+  return path.join(os.homedir(), ".kiyo", "checkpoints");
+}
+
+async function ensureCheckpointsDir(): Promise<void> {
+  await fs.mkdir(checkpointsDir(), { recursive: true });
+}
 
 export async function readFileSafe(p: string): Promise<string> {
   return fs.readFile(p, "utf8");
@@ -83,7 +93,22 @@ export async function createCheckpoint(paths: string[]): Promise<Checkpoint> {
   );
   const cp: Checkpoint = { id: `cp_${Date.now()}`, files, createdAt: Date.now() };
   checkpoints.push(cp);
+  await ensureCheckpointsDir();
+  await fs.writeFile(path.join(checkpointsDir(), `${cp.id}.json`), JSON.stringify(cp), "utf8");
   return cp;
+}
+
+export async function listCheckpointsAsync(): Promise<Checkpoint[]> {
+  await ensureCheckpointsDir();
+  const entries = await fs.readdir(checkpointsDir());
+  const out: Checkpoint[] = [];
+  for (const e of entries) {
+    if (!e.endsWith(".json")) continue;
+    try {
+      out.push(JSON.parse(await fs.readFile(path.join(checkpointsDir(), e), "utf8")) as Checkpoint);
+    } catch {}
+  }
+  return out;
 }
 
 export function listCheckpoints(): Checkpoint[] {
@@ -91,7 +116,14 @@ export function listCheckpoints(): Checkpoint[] {
 }
 
 export async function restoreCheckpoint(id: string): Promise<boolean> {
-  const cp = checkpoints.find((c) => c.id === id);
+  let cp = checkpoints.find((c) => c.id === id);
+  if (!cp) {
+    try {
+      cp = JSON.parse(await fs.readFile(path.join(checkpointsDir(), `${id}.json`), "utf8")) as Checkpoint;
+    } catch {
+      return false;
+    }
+  }
   if (!cp) return false;
   for (const f of cp.files) {
     await fs.writeFile(f.path, f.content, "utf8");
