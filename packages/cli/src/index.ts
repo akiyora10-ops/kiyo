@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { promises as fs, readFileSync } from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
@@ -11,6 +11,24 @@ import { loadPlugins, pluginDirs } from "./plugins.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const VERSION = JSON.parse(readFileSync(path.join(__dirname, "..", "package.json"), "utf8"))
   .version as string;
+
+async function buildSystemPrompt(cwd: string): Promise<string> {
+  const parts = ["You are Kiyo, a helpful coding agent."];
+  for (const name of ["AGENTS.md", "KIYO.md"]) {
+    try {
+      parts.push(`\n\n# ${name}\n` + (await fs.readFile(path.join(cwd, name), "utf8")));
+    } catch {}
+  }
+  try {
+    const entries = await fs.readdir(cwd, { withFileTypes: true, recursive: true } as any);
+    const files = entries
+      .filter((e: any) => e.isFile())
+      .map((e: any) => path.relative(cwd, path.join(e.parentPath || e.path || cwd, e.name)))
+      .slice(0, 200);
+    if (files.length) parts.push("\n\n# Repo files\n" + files.join("\n"));
+  } catch {}
+  return parts.join("");
+}
 
 async function main() {
   const args = process.argv.slice(2);
@@ -69,30 +87,38 @@ async function main() {
 
   if (args[0] === "run") {
     const task = args.slice(1).join(" ");
-    const provider = router.select({ tools: true });
-    if (!provider) {
+    const sel = router.select({ tools: true });
+    if (!sel) {
       console.error("no provider available");
       process.exit(1);
     }
-    const model = provider.models[0]?.id;
+    const provider = sel.provider;
+    const model = sel.model;
     console.log("provider:", provider.id, "model:", model);
     const ctx = { cwd, projectRoot: cwd, env: process.env as any };
     const permissionCfg = cfg.permissions;
     const gen = runAgent(task, {
       provider,
       model,
+      chat: (req, key) => router.chatWithFallback(req, key),
       registry,
       ctx,
       permissionCfg,
-      approve: async () => true,
-      systemPrompt: "You are Kiyo, a helpful coding agent.",
+      approve: async (msg) => {
+        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+        const ans = await new Promise<string>((resolve) => rl.question(`${msg} [y/N] `, resolve));
+        rl.close();
+        return /^y(es)?$/i.test(ans.trim());
+      },
+      systemPrompt: await buildSystemPrompt(cwd),
     });
     for await (const ev of gen) {
       if (ev.type === "text") process.stdout.write(ev.text);
-      else if (ev.type === "tool_call") console.log("\n[tool]", ev.name, JSON.stringify(ev.args));
+      else if (ev.type === "tool_call") console.log("\\n[tool]", ev.name, JSON.stringify(ev.args));
       else if (ev.type === "tool_result") console.log("[result]", ev.ok, ev.output.slice(0, 500));
-      else if (ev.type === "done") console.log("\n[done]", ev.reason);
-      else if (ev.type === "error") console.error("\n[error]", ev.message);
+      else if (ev.type === "provider_switch") console.log("\\n[switch]", ev.provider, ev.model);
+      else if (ev.type === "done") console.log("\\n[done]", ev.reason);
+      else if (ev.type === "error") console.error("\\n[error]", ev.message);
     }
     return;
   }
@@ -120,17 +146,19 @@ async function main() {
       rl.prompt();
       return;
     }
-    const provider = router.select({ tools: true });
-    if (!provider) {
+    const sel = router.select({ tools: true });
+    if (!sel) {
       console.error("no provider");
       rl.prompt();
       return;
     }
-    const model = cfg.model || provider.models[0]?.id;
+    const provider = sel.provider;
+    const model = cfg.model || sel.model;
     const ctx = { cwd, projectRoot: cwd, env: process.env as any };
     const gen = runAgent(input, {
       provider,
       model,
+      chat: (req, key) => router.chatWithFallback(req, key),
       registry,
       ctx,
       permissionCfg: cfg.permissions,
@@ -138,14 +166,15 @@ async function main() {
         console.log(msg);
         return true;
       },
-      systemPrompt: "You are Kiyo, a helpful coding agent.",
+      systemPrompt: await buildSystemPrompt(cwd),
     });
     for await (const ev of gen) {
       if (ev.type === "text") process.stdout.write(ev.text);
-      else if (ev.type === "tool_call") console.log("\n[tool]", ev.name);
+      else if (ev.type === "tool_call") console.log("\\n[tool]", ev.name);
       else if (ev.type === "tool_result") console.log("[result]", ev.ok);
-      else if (ev.type === "done") console.log("\n[done]", ev.reason);
-      else if (ev.type === "error") console.error("\n[error]", ev.message);
+      else if (ev.type === "provider_switch") console.log("\\n[switch]", ev.provider, ev.model);
+      else if (ev.type === "done") console.log("\\n[done]", ev.reason);
+      else if (ev.type === "error") console.error("\\n[error]", ev.message);
     }
     console.log();
     rl.prompt();

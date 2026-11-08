@@ -39,9 +39,26 @@ export function makeOpenAICompatProvider(cfg: OAICompatConfig, apiKey?: string):
   }
 
   async function* chat(req: ProviderRequest, key?: string): AsyncIterable<ProviderChunk> {
+    const messages = req.messages.map((m) => {
+      if (m.role === "assistant" && m.toolCalls && m.toolCalls.length) {
+        return {
+          role: "assistant",
+          content: m.content || null,
+          tool_calls: m.toolCalls.map((tc) => ({
+            id: tc.id,
+            type: "function",
+            function: { name: tc.name, arguments: JSON.stringify(tc.arguments ?? {}) },
+          })),
+        };
+      }
+      if (m.role === "tool") {
+        return { role: "tool", tool_call_id: m.toolCallId, name: m.name, content: m.content };
+      }
+      return { role: m.role, content: m.content };
+    });
     const body = {
       model: req.model,
-      messages: req.messages,
+      messages,
       tools: req.tools?.map((t) => ({
         type: "function",
         function: { name: t.name, description: t.description, parameters: t.inputSchema },

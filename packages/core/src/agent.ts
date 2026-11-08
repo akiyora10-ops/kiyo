@@ -1,4 +1,4 @@
-import type { Provider, ToolContext } from "@kiyo/plugin-sdk";
+import type { Provider, ProviderChunk, ProviderRequest, ToolContext } from "@kiyo/plugin-sdk";
 import type { ToolRegistry } from "./tools.js";
 import { runTool } from "./tools.js";
 
@@ -6,6 +6,7 @@ export type AgentEvent =
   | { type: "text"; text: string }
   | { type: "tool_call"; name: string; args: unknown }
   | { type: "tool_result"; name: string; output: string; ok: boolean }
+  | { type: "provider_switch"; provider: string; model: string }
   | { type: "done"; reason: string }
   | { type: "error"; message: string };
 
@@ -13,6 +14,7 @@ export interface AgentConfig {
   provider: Provider;
   model: string;
   apiKey?: string;
+  chat?: (req: ProviderRequest, apiKey?: string) => AsyncIterable<ProviderChunk>;
   registry: ToolRegistry;
   ctx: ToolContext;
   permissionCfg: any;
@@ -27,6 +29,8 @@ export async function* runAgent(task: string, cfg: AgentConfig): AsyncGenerator<
     role: "system" | "user" | "assistant" | "tool";
     content: string;
     toolCallId?: string;
+    toolCalls?: { id: string; name: string; arguments: unknown }[];
+    name?: string;
   }[] = [];
   if (cfg.systemPrompt) messages.push({ role: "system", content: cfg.systemPrompt });
   messages.push({ role: "user", content: task });
@@ -41,7 +45,8 @@ export async function* runAgent(task: string, cfg: AgentConfig): AsyncGenerator<
     let assistantText = "";
     const toolCalls: { id: string; name: string; arguments: unknown }[] = [];
     try {
-      const stream = cfg.provider.chat(
+      const chatFn = cfg.chat ?? ((r, k) => cfg.provider.chat(r, k));
+      const stream = chatFn(
         { model: cfg.model, messages, tools: toolDefs, stream: true },
         cfg.apiKey,
       );
@@ -51,6 +56,8 @@ export async function* runAgent(task: string, cfg: AgentConfig): AsyncGenerator<
           yield { type: "text", text: chunk.text };
         } else if (chunk.type === "tool_call" && chunk.toolCall) {
           toolCalls.push(chunk.toolCall);
+        } else if (chunk.type === "provider_switch") {
+          yield { type: "provider_switch", provider: chunk.provider ?? "", model: chunk.model ?? "" };
         } else if (chunk.type === "error") {
           yield { type: "error", message: chunk.error ?? "provider error" };
           return;
@@ -61,9 +68,11 @@ export async function* runAgent(task: string, cfg: AgentConfig): AsyncGenerator<
       return;
     }
 
-    if (assistantText) {
-      messages.push({ role: "assistant", content: assistantText });
-    }
+    messages.push({
+      role: "assistant",
+      content: assistantText,
+      toolCalls: toolCalls.map((tc) => ({ id: tc.id, name: tc.name, arguments: tc.arguments })),
+    });
 
     if (toolCalls.length === 0) {
       yield { type: "done", reason: "completed" };
@@ -90,6 +99,7 @@ export async function* runAgent(task: string, cfg: AgentConfig): AsyncGenerator<
         role: "tool",
         content: result.output || result.error || "",
         toolCallId: tc.id,
+        name: tc.name,
       });
     }
   }

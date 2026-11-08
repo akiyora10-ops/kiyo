@@ -66,6 +66,8 @@ export interface ProviderRequest {
     role: "system" | "user" | "assistant" | "tool";
     content: string;
     toolCallId?: string;
+    toolCalls?: { id: string; name: string; arguments: unknown }[];
+    name?: string;
   }[];
   tools?: { name: string; description: string; inputSchema: unknown }[];
   temperature?: number;
@@ -74,11 +76,13 @@ export interface ProviderRequest {
 }
 
 export interface ProviderChunk {
-  type: "text" | "tool_call" | "done" | "error";
+  type: "text" | "tool_call" | "done" | "error" | "provider_switch";
   text?: string;
   toolCall?: { id: string; name: string; arguments: unknown };
   error?: string;
   usage?: { inputTokens: number; outputTokens: number };
+  provider?: string;
+  model?: string;
 }
 
 export interface Provider {
