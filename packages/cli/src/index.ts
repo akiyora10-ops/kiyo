@@ -13,6 +13,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const VERSION = JSON.parse(readFileSync(path.join(__dirname, "..", "package.json"), "utf8"))
   .version as string;
 
+const BLUE = "\u001b[34m";
+const RESET = "\u001b[0m";
+const DUCK = `${BLUE}  (o )  kiyo v${VERSION}  quack!${RESET}`;
+
 async function buildSystemPrompt(cwd: string): Promise<string> {
   const parts = ["You are Kiyo, a helpful coding agent."];
   for (const name of ["AGENTS.md", "KIYO.md"]) {
@@ -56,6 +60,7 @@ async function main() {
   }
 
   if (args[0] === "doctor") {
+    console.log(DUCK);
     console.log("kiyo doctor");
     console.log("node:", process.version);
     console.log("config:", path.join(os.homedir(), ".kiyo", "config.json"));
@@ -153,11 +158,12 @@ async function main() {
   }
 
   // interactive
-  console.log("Kiyo v0.1.0. Type /help for commands, /exit to quit.");
+  console.log(DUCK);
+  console.log("Type /help for commands, /exit to quit.");
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
-    prompt: "kiyo> ",
+    prompt: `${BLUE}kiyo> ${RESET}`,
   });
   rl.prompt();
   rl.on("line", async (line) => {
